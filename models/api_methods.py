@@ -309,6 +309,14 @@ class ProductApiProduct(models.Model):
 
             if product_template:
 
+                product_template.write({
+                    'name': record.name,
+                    'standard_price': record.price,
+                    'is_dropshipping': True,
+                    'dropshipping_warehouse': record.warehouse,
+                    'dropshipping_brand': record.mark
+                })
+
                 partner_id = self.product_api_id.api_credentials_ids.partner_id.id
                 if not partner_id:
                     raise UserError('Selecciona tu proveedor en la búsqueda')

@@ -32,7 +32,7 @@
                 <field name="is_dropshipping" string="Quantity Supplier" invisible="True"/>
                 <field name="special_price" string="Especial Price Dropshipping?"/>
                 <field name="dropshipping_warehouse" string="Dropshipping Warehouse" invisible="True"/>
-                <field name="dropshipping_brand" string="Dropshipping Brand"/>
+                <field name="dropshipping_brand" string="Dropshipping Brand" invisible="True"/>
             </xpath>
             <xpath expr="//div[@name='button_box']" position="before">
                  <widget name="web_ribbon" title="Dropshipping" bg_color="bg-success"

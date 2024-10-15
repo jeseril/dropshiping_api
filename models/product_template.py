@@ -8,7 +8,7 @@ class ProductTemplate(models.Model):
     is_dropshipping = fields.Boolean(default=False, string='¿Dropshipping?')
     special_price = fields.Boolean (default=False, string='¿Special_price Price Dropshipping?')
 
-    '''Información de pedido'''
+    '''Información de pedido MPS'''
     dropshipping_warehouse = fields.Char (string="Dropshipping Warehouse")
     dropshipping_brand = fields.Char (string ='Product Brand')  # Relación inversa
 
