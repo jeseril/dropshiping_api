@@ -1,0 +1,10 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+dropshipping_api.access_res_config_settings,access_res_config_settings,model_res_company,,1,1,1,1
+dropshipping_api.access_api_credentials,access_api_credentials,model_api_credentials,,1,1,1,1
+dropshipping_api.access_api_configuration,access_api_configuration,model_api_configuration,,1,1,1,1
+dropshipping_api.access_api_methods,access_api_methods,model_api_methods,,1,1,1,1
+dropshipping_api.access_product_category_api,access_product_category_api,model_product_category_api,,1,1,1,1
+dropshipping_api.access_call_products_api,access_call_products_api,model_call_products_api,,1,1,1,1
+dropshipping_api.access_product_subcategory_api,access_product_subcategory_api,model_product_subcategory_api,,1,1,1,1
+dropshipping_api.access_product_api_result,access_product_api_result,model_product_api_result,,1,1,1,1
+dropshipping_api.access_product_brands_api,access_product_brands_api,model_product_brands_api,,1,1,1,1

@@ -1,0 +1,20 @@
+{
+    'name': 'MPS API Integration',
+    'version': '1.0',
+    'summary': 'Integration with MPS API.',
+    'description': '',
+    'author': 'Jesus Rincon',
+    'website': 'https://www.linkedin.com/in/jesussebastian/',
+    'category': 'API',
+    'depends': ['base','base_setup','product'],
+    'data': [
+        'security/ir.model.access.csv',
+        'data/cron_jobs.xml',
+        'views/call_products_api_views.xml',
+        'views/res_config_settings_views.xml',
+        'views/product_template_views.xml',
+    ],
+    'installable': True,
+    'application': True,
+    'auto_install': False,
+}

@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+<!--    <data>-->
+<!--        <record id="view_product_template_form_inherit" model="ir.ui.view">-->
+<!--            <field name="name">product.template.form.inherit</field>-->
+<!--            <field name="model">product.template</field>-->
+<!--            <field name="inherit_id" ref="product.product_template_only_form_view"/>-->
+<!--            <field name="arch" type="xml">-->
+<!--                <xpath expr="//page[@name='purchase']//field[@name='seller_ids']" position="after">-->
+<!--                    <field name="quantity_supplier"/>-->
+<!--                </xpath>-->
+<!--            </field>-->
+<!--        </record>-->
+<!--    </data>-->
+    <record id="product_supplierinfo_tree_view_inherited" model="ir.ui.view">
+        <field name="name">product.supplierinfo.tree.view.inherited</field>
+        <field name="model">product.supplierinfo</field>
+        <field name="inherit_id" ref="product.product_supplierinfo_tree_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//tree" position="inside">
+                <field name="quantity_supplier" string="Quantity Supplier" optional="hide"/>
+            </xpath>
+        </field>
+    </record>
+
+     <record id="product_template_form_view_inherited" model="ir.ui.view">
+        <field name="name">product.template.form.view.inherited</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="product.product_template_only_form_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='default_code']" position="after">
+                <field name="is_dropshipping" string="Quantity Supplier" invisible="True"/>
+                <field name="special_price" string="Especial Price Dropshipping?"/>
+                <field name="dropshipping_warehouse" string="Dropshipping Warehouse" invisible="True"/>
+                <field name="dropshipping_brand" string="Dropshipping Brand"/>
+            </xpath>
+            <xpath expr="//div[@name='button_box']" position="before">
+                 <widget name="web_ribbon" title="Dropshipping" bg_color="bg-success"
+                        invisible="is_dropshipping == False"/>
+             </xpath>
+        </field>
+    </record>
+
+
+</odoo>
