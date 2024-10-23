@@ -1,5 +1,5 @@
 from odoo import models, fields, api
-import requests, ast, re, logging
+import requests, ast, re, logging, json
 from odoo.exceptions import UserError
 
 
@@ -11,66 +11,139 @@ class MPSMethods(models.Model):
 
     api_configuration_id = fields.Many2one('api.configuration', string='API Configuration', readonly=True)
 
-    def construct_header_or_params(self, api_configuration_id, text,sku):
+    def construct_header_or_params(self, api_configuration_id, text, sku=None, account_move=None):
         product_api_record = self.env['call.products.api'].search([], limit=1)
         pattern = r'@(.*?)@'
 
+        def replace_products():
+            # Productos relacionados en account_move
+            if account_move:
+                products_dict = {}
+                for line in account_move.invoice_line_ids:
+                    product_tmpl_id = line.product_id.product_tmpl_id
+
+                    if product_tmpl_id.is_dropshipping:
+                        if product_tmpl_id not in products_dict:
+                            products_dict[product_tmpl_id] = {
+                                'sku_producto': str(product_tmpl_id.default_code or ''),
+                                'marca_producto': str(product_tmpl_id.dropshipping_brand or ''),
+                                'bodega_producto': str(product_tmpl_id.dropshipping_warehouse or ''),
+                                'cantidad': line.quantity
+                            }
+                        else:
+                            products_dict[product_tmpl_id]['cantidad'] += line.quantity
+
+                # Construir lista de detalles del pedido
+                listaPedidoDetalle = []
+                for product_info in products_dict.values():
+                    listaPedidoDetalle.append({
+                        "PartNum": product_info['sku_producto'],
+                        "Cantidad": product_info['cantidad'],
+                        "Marks": product_info['marca_producto'],
+                        "Bodega": product_info['bodega_producto'],
+                    })
+
+                # Intentar convertir el string JSON a un diccionario
+                try:
+                    data = json.loads(text)
+                    # Reemplazar la lista de detalles en el diccionario
+                    if "listaPedido" in data and len(data["listaPedido"]) > 0:
+                        data["listaPedido"][0]["listaPedidoDetalle"] = listaPedidoDetalle
+                    # Convertir de nuevo a JSON el texto modificado
+                    return json.dumps(data)
+                except json.JSONDecodeError as e:
+                    _logger.error(f"Error decoding JSON: {e}")
+                    return text
+
+        if account_move:
+            text = replace_products()
+
         def replace_token(match):
-            word_to_teplace = match.group(1)
-            if word_to_teplace == 'token':
+            word_to_replace = match.group(1)
+            # Reemplazo de token dinámico basado en el valor encontrado
+            if word_to_replace == 'token':
                 return api_configuration_id.api_credentials_id.token or ''
-            if word_to_teplace == 'type':
+            if word_to_replace == 'type':
                 return api_configuration_id.authorization_type or ''
-            if word_to_teplace == 'id_categoria':
+            if word_to_replace == 'id_categoria':
                 if product_api_record:
                     id_category = product_api_record.id_category
                     if isinstance(id_category, int):
                         id_category = str(id_category)
                     return id_category or ''
-            if word_to_teplace == 'id_subcategoria':
+            if word_to_replace == 'id_subcategoria':
                 if product_api_record:
-                    id_subcategory = product_api_record.id_subcategory
+                    id_subcategory = product_api_record.subcategory_api_ids.codigo_sub_categoria
                     if isinstance(id_subcategory, int):
                         id_subcategory = str(id_subcategory)
                     return id_subcategory or ''
-            if word_to_teplace == 'keyword':
+            if word_to_replace == 'keyword':
                 if product_api_record:
                     keyword = product_api_record.keyword
                     return keyword or ''
-            if word_to_teplace == 'sku':
+            if word_to_replace == 'sku':
                 if product_api_record:
                     keyword = sku
                     return keyword or ''
-            if word_to_teplace == 'id_marca':
+            if word_to_replace == 'id_marca':
                 if product_api_record:
                     id_brand = product_api_record.brand_api_ids.codigo_marca
                     if isinstance(id_brand, int):
                         id_brand = str(id_brand)
                     return id_brand or ''
 
-            return match.group(0)
+            # Campos relacionados a account_move
+            if account_move:
+                if word_to_replace == 'numero_identificacion':
+                    return str(account_move.partner_id.vat or '')
+                if word_to_replace == 'nombre_cliente':
+                    return str(account_move.partner_id.name or '')
+                if word_to_replace == 'telefono_entrega':
+                    return str(account_move.partner_id.phone or '')
+                if word_to_replace == 'direccion':
+                    return str(account_move.partner_id.street or '')
+                if word_to_replace == 'departamento':
+                    return str(account_move.partner_id.state_id.l10n_co_edi_code or '')
+                if word_to_replace == 'ciudad':
+                    ciudad_code = str(account_move.partner_id.city_id.l10n_co_edi_code or '')
+                    departamento_code = str(account_move.partner_id.state_id.l10n_co_edi_code or '')
+                    if ciudad_code.startswith(departamento_code):
+                        ciudad_code = ciudad_code[len(departamento_code):]
+                    return ciudad_code
 
+            return match.group(0)  # Si no se encuentra reemplazo, devuelve el texto original
+
+        # Reemplazar tokens en el texto
         replaced_text = re.sub(pattern, replace_token, text)
 
+        # Intentar convertir el texto reemplazado a un diccionario
         try:
             result_dict = ast.literal_eval(replaced_text)
-        except (SyntaxError, ValueError):
+        except json.JSONDecodeError as e:
+            _logger.error(f"Error al convertir texto a JSON: {e}")
             result_dict = {}
 
         return result_dict
 
-    def authenticate_api(self,sku=None):
+    def authenticate_api(self,sku=None,account_move=None):
         url = self.api_configuration_id.url_endpoint
 
         http_method = self.api_configuration_id.http_method or ''
-        headers = self.construct_header_or_params(self.api_configuration_id, self.api_configuration_id.headers or '{}', sku)
-        params = self.construct_header_or_params(self.api_configuration_id, self.api_configuration_id.params or '{}', sku)
+        headers = self.construct_header_or_params(self.api_configuration_id, self.api_configuration_id.headers or '{}', sku, account_move)
+        params = self.construct_header_or_params(self.api_configuration_id, self.api_configuration_id.params or '{}', sku, account_move)
+        data = self.construct_header_or_params(self.api_configuration_id, self.api_configuration_id.body or '{}', sku, account_move)
+        # data = ast.literal_eval(self.api_configuration_id.body) if self.api_configuration_id.body else {}
 
-        # Procesar el cuerpo de la solicitud
-        data = ast.literal_eval(self.api_configuration_id.body) if self.api_configuration_id.body else {}
         try:
-            response = getattr(requests, http_method)(url, headers=headers, data=data, params=params)
-            response.raise_for_status()
+            # Enviar solicitud en función del método HTTP
+            if self.api_configuration_id.body_is_json:
+                # Enviar como JSON
+                response = getattr(requests, http_method)(url, headers=headers, json=data, params=params)
+            else:
+                # Enviar como form-data
+                response = getattr(requests, http_method)(url, headers=headers, data=data, params=params)
+
+            response.raise_for_status()  # Verifica si hubo un error HTTP
 
             if response.status_code == 200:
                 json_response = response.json()
@@ -88,6 +161,8 @@ class MPSMethods(models.Model):
                     self.fetch_products_from_api(json_response)
                 elif self.api_configuration_id.name == 'VerMarcas':
                     self.fetch_brands_from_api(json_response)
+                elif self.api_configuration_id.name == 'RealizarPedido':
+                    self.fetch_purchase_order_api(json_response,account_move)
                 # INGRAM
 
             else:
@@ -242,6 +317,44 @@ class MPSMethods(models.Model):
                     'marca_homologada': brand.get('MarcaHomologada'),
                 })
 
+    def fetch_purchase_order_api(self, json_response, account_move=None):
+        try:
+            order_data = json_response
+
+            # Verificar si account_move está definido
+            if account_move:
+                # Buscar el registro de 'purchase.order' relacionado
+                # Asumiendo que account_move.line_ids.sale_line_ids está vinculado a un pedido de compra
+                purchase_line_ids = account_move.line_ids.mapped(
+                    'sale_line_ids.order_id.order_line.purchase_line_ids.id'
+                )
+                purchase_orders = self.env['purchase.order'].search([
+                    ('order_line.product_id.product_tmpl_id.is_dropshipping', '=', True),
+                    ('order_line.id', 'in', purchase_line_ids)
+                ])
+
+                for purchase_order in purchase_orders:
+                    if purchase_orders.product_id.is_dropshipping:
+                        # Extraer los valores de la respuesta de la API
+                        for data in order_data:
+                            if data.get('valor') == "1" and data.get('pedido'):
+                                # Actualizar el campo api_supplier_order en el purchase.order relacionado
+                                purchase_order.write({
+                                    'api_supplier_order': data['pedido']
+                                })
+                                purchase_order.message_post(body=f"Pedido API guardado: {data['pedido']}")
+                            else:
+                                # Registrar un mensaje de error en el registro de purchase.order
+                                purchase_order.message_post(body="No se pudo guardar el pedido. Valor incorrecto.")
+                else:
+                    # Si no se encuentra el registro de purchase.order
+                    _logger.error('No se encontró una relación con purchase.order en account.move.')
+            else:
+                _logger.error('account_move no está definido.')
+
+        except Exception as e:
+            # Manejo de excepciones genéricas, registrar el error sin detener el proceso
+            _logger.error(f"Error fetching order from API: {e}")
 
     def delete_products(self):
         products_to_delete = self.env['product.api.result'].search([])
@@ -290,16 +403,19 @@ class ProductApiProduct(models.Model):
     def create_odoo_product(self,update=None):
         for record in self:
             product_template = self.env['product.template'].search([('default_code', '=', record.sku)], limit=1)
-
+            buy_route = self.env.ref('purchase_stock.route_warehouse0_buy')
+            dropship_route = self.env.ref('stock_dropshipping.route_drop_shipping')
             # Crear el producto si no existe y está seleccionado
             if not product_template and record.selected:
                 # Obtener rutas de compra y dropshipping
-                buy_route = self.env.ref('purchase_stock.route_warehouse0_buy')
-                dropship_route = self.env.ref('stock_dropshipping.route_drop_shipping')
 
                 product_template = self.env['product.template'].create({
                     'name': record.name,
                     'default_code': record.sku,
+                    # custom_castor_data campos SKU
+                    'config_sku' : record.sku,
+                    'sku' : record.sku,
+                    #
                     'standard_price': record.price,
                     'is_dropshipping': True,
                     'route_ids': [(6, 0, [buy_route.id, dropship_route.id])],  # Asignar rutas
@@ -311,8 +427,14 @@ class ProductApiProduct(models.Model):
 
                 product_template.write({
                     'name': record.name,
+                    'default_code': record.sku,
+                    # custom_castor_data campos SKU
+                    'config_sku' : record.sku,
+                    'sku' : record.sku,
+                    #
                     'standard_price': record.price,
                     'is_dropshipping': True,
+                    'route_ids': [(6, 0, [buy_route.id, dropship_route.id])],  # Asignar rutas
                     'dropshipping_warehouse': record.warehouse,
                     'dropshipping_brand': record.mark
                 })

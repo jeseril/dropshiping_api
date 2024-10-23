@@ -44,7 +44,12 @@ class CallProductsApi(models.Model):
             id_subcategoria = self.subcategory_api_ids.codigo_sub_categoria
             record = self.search([], limit=1)
             if record:
-                record.write({'id_subcategory': id_subcategoria,})
+                record.write({'id_subcategory': id_subcategoria})
+        else:
+            # Asigna '' si no hay subcategoría seleccionada
+            record = self.search([], limit=1)
+            if record:
+                record.write({'id_subcategory': ''})
 
     def ejecutar_verCatalogo(self):
         api_credentials = self.api_credentials_ids

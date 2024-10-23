@@ -1,0 +1,16 @@
+<odoo>
+    <data>
+        <!-- Herencia de la vista del formulario de orden de compra -->
+        <record id="view_purchase_order_form_inherit" model="ir.ui.view">
+            <field name="name">purchase.order.form.inherit</field>
+            <field name="model">purchase.order</field>
+            <field name="inherit_id" ref="purchase.purchase_order_form"/>
+            <field name="arch" type="xml">
+                <!-- Insertar el nuevo campo después de 'dest_address_id' -->
+                <xpath expr="//field[@name='dest_address_id']" position="after">
+                    <field name="api_supplier_order" readonly="1"/>
+                </xpath>
+            </field>
+        </record>
+    </data>
+</odoo>

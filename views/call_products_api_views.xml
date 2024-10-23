@@ -34,7 +34,7 @@
                             <field name="subcategory_api_ids"/>
                             <field name="brand_api_ids"/>
                             <field name="keyword"/>
-                            <field name="product_ids" widget="one2many_list" context="{'default_selected': False}" editable="top">
+                            <field name="product_ids" widget="one2many_list" context="{'default_selected': False}">
                                 <tree>
                                     <field name="sku"/>
                                     <field name="name"/>

@@ -33,6 +33,7 @@ class configuration_api(models.Model):
 
     headers = fields.Char(string='Headers')
     body = fields.Char(string='Body')
+    body_is_json = fields.Boolean(string='Body is JSON?')
     api_credentials_id = fields.Many2one('api.credentials', string='API Credentials', readonly=True)
     mps_methods_ids = fields.One2many('api.methods', 'api_configuration_id', string='Configuration')
 

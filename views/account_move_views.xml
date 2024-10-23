@@ -1,0 +1,16 @@
+<odoo>
+    <data>
+        <!-- Heredamos la vista de formulario de account.move -->
+        <record id="view_account_move_form_inherit" model="ir.ui.view">
+            <field name="name">account.move.form.inherit</field>
+            <field name="model">account.move</field>
+            <field name="inherit_id" ref="account.view_move_form"/>
+            <field name="arch" type="xml">
+                <!-- Aquí es donde agregamos el botón -->
+                <xpath expr="//header" position="inside">
+                    <button name="post" type="object" string="Enviar orden Drophipping" class="oe_highlight"/>
+                </xpath>
+            </field>
+        </record>
+    </data>
+</odoo>
